@@ -1,0 +1,17 @@
+  之前学习kubernetes的程度仅限于部署，作为运维工程师，在部署过程中也遇到过很多的困难，每次遇到问题，只能网上各种搜索，在一次解决问题的过程中，通过阅读一篇文章中讲解到了涉及的源代码，遂产生了学习源码的想法，奈何编程能力较弱，有幸本次加入社区，和一群大佬们一起学习，实在是一件很有意义的事。说实话，在群里不说话，光看讨论记录都能涨不少姿势。
+  本周（2020.08.03-2020.08.08）学习client-go，记录一下几个基础概念。
+client-go包中包含4种客户端：
+  RESTClient
+  ClientSet
+  DynamicClient
+  DiscoveryClient
+其中，RESTClient是最基础的客户端实现，是一种http客户端，主要用来和api-server进行通信，其他三种客户端都是在此基础上进行了封装，用于不同场景下和api-server进行通信。
+client-go的实现机制最主要的就是informer机制，刚接触的话理解起来还是有一定抽象困难的。比如以下的几个概念：
+  reflector：reflector反射器定义在tools/cache/reflector.go中，它监控api-server指定的资源类型。这个被定义在ListAndWatch函数中。它可以监控内置的资源或者用户自定义资源。当反射器接受到api-server的关于新资源实例的通知时，它会使用相应的清单新创建的对象的api并且把它加入到watchHandler函数中定义的队列中（Delta Fifo queue）
+  informer: informer定义在tools/cache/controller.go，它从队列中取出对象，这个被定义在processLoop函数中，这个基本控制器的工作是保存对象供后续检索，通过我们的控制器处理它的对象。
+  indexer：indexer索引器提供索引对象的功能。它被定义在tools/cache/index.go中。一个典型的用例是创建索引的时候基于对象的标签进行创建。索引器可以根据多个索引维护索引功能。索引器使用线程安全的数据存储来存储对象和他们的keys。在client-go/tools/cache/store.go中的MetaNamespaceKeyFunc函数中定义了一个默认的生成对象的key的功能。
+  custom controller components：自定义控制器组件
+  informer reference：这是一个informer 对象的引用，它知道如何根据你的自定义资源对象进行工作。你的自定义控制器代码需要创建一个适当的informer。
+  indexer reference: 这是一个indexer对象的引用，它知道如何根据你的自定义资源对象进行工作。你的自定义控制器代码需要创建它。你将会在索引对象后续的处理中使用这个reference。
+  
+在informer机制中，设计到了队列的操作、本地索引的操作、事件通知机制的操作。对于k8s的每一种资源对象，都有生成对应类型的informer。
